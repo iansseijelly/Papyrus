@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import Charts
+import Combine
 
 struct RecipesListView: View {
     @Environment(\.modelContext) private var modelContext
@@ -163,6 +164,9 @@ private struct RecipeRowView: View {
 
 struct RecipeDetailView: View {
     @Environment(\.modelContext) private var modelContext
+    @State private var showPlaySession = false
+    @State private var showLogBrew = false
+
     let recipe: Recipe
     var onEdit: () -> Void
 
@@ -179,6 +183,22 @@ struct RecipeDetailView: View {
             .padding()
         }
         .navigationTitle(recipe.name)
+        .sheet(isPresented: $showPlaySession) {
+            NavigationStack {
+                RecipePlayView(recipe: recipe) {
+                    showPlaySession = false
+                    DispatchQueue.main.async {
+                        showLogBrew = true
+                    }
+                }
+            }
+            .presentationDetents([.large])
+        }
+        .sheet(isPresented: $showLogBrew) {
+            NewBrewFlow(initialRecipe: recipe) {
+                showLogBrew = false
+            }
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -200,12 +220,23 @@ struct RecipeDetailView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Label(recipe.brewMethod.label, systemImage: recipe.brewMethod.iconName)
-                .font(.title3.bold())
-            Spacer()
-            Text("1 : \(String(format: "%.1f", recipe.ratio))")
-                .font(.title2.weight(.semibold))
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Label(recipe.brewMethod.label, systemImage: recipe.brewMethod.iconName)
+                    .font(.title3.bold())
+                Spacer()
+                Text("1 : \(String(format: "%.1f", recipe.ratio))")
+                    .font(.title2.weight(.semibold))
+            }
+
+            Button {
+                showPlaySession = true
+            } label: {
+                Label("Play Recipe", systemImage: "play.circle.fill")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(recipe.pourSteps.isEmpty)
         }
     }
 
@@ -297,6 +328,234 @@ private extension RecipeDetailView {
                     waterAmount: step.waterAmount
                 )
             }
+    }
+}
+
+private struct RecipePlayView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let recipe: Recipe
+    var onPlaybackCompleted: () -> Void
+
+    @State private var elapsed: TimeInterval = 0
+    @State private var isRunning = false
+    @State private var hasStarted = false
+    @State private var lastTick: Date?
+    @State private var completionTriggered = false
+
+    private let timer = Timer.publish(every: 0.2, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                statusCard
+                timelineCard
+                stepCard
+                controlsCard
+            }
+            .padding()
+        }
+        .navigationTitle("Play Recipe")
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Close") {
+                    dismiss()
+                }
+            }
+        }
+        .onReceive(timer) { now in
+            guard isRunning else { return }
+            defer { lastTick = now }
+
+            guard let lastTick else { return }
+            elapsed = min(totalBrewTime, elapsed + now.timeIntervalSince(lastTick))
+            if elapsed >= totalBrewTime {
+                finishAndLog()
+            }
+        }
+        .onDisappear {
+            isRunning = false
+            lastTick = nil
+        }
+    }
+
+    private var statusCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Timer")
+                .font(.headline)
+            Text(formatDuration(elapsed))
+                .font(.system(size: 44, weight: .bold, design: .rounded))
+                .monospacedDigit()
+            Text(statusText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    private var timelineCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Pour Timeline")
+                .font(.headline)
+            PourTimelineChart(
+                steps: timelineSteps,
+                totalBrewTime: totalBrewTime,
+                color: .green,
+                currentTime: elapsed
+            )
+            .frame(height: 220)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    private var stepCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Step Guidance")
+                .font(.headline)
+            if let currentStep {
+                Text("Now: Step \(currentStep.label)")
+                    .font(.subheadline.weight(.semibold))
+                Text("Pour \(Int(currentStep.waterAmount)) g over \(formatDuration(currentStep.duration))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if let nextStep {
+                Text("Next: Step \(nextStep.label)")
+                    .font(.subheadline.weight(.semibold))
+                Text("Starts in \(formatDuration(max(0, nextStep.startTime - elapsed)))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("All pours complete")
+                    .font(.subheadline.weight(.semibold))
+                Text("Let the brew finish its drawdown.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    private var controlsCard: some View {
+        HStack(spacing: 12) {
+            if !hasStarted {
+                Button {
+                    start()
+                } label: {
+                    Label("Start", systemImage: "play.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+            } else {
+                Button {
+                    togglePause()
+                } label: {
+                    Label(isRunning ? "Pause" : "Resume", systemImage: isRunning ? "pause.fill" : "play.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+
+                Button(role: .destructive) {
+                    finishAndLog()
+                } label: {
+                    Label("End", systemImage: "stop.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    private var statusText: String {
+        if !hasStarted { return "Ready to start." }
+        if elapsed >= totalBrewTime { return "Finished. Opening brew log..." }
+        if let currentStep {
+            return "Step \(currentStep.label) in progress."
+        }
+        if let nextStep {
+            return "Step \(nextStep.label) starts in \(formatDuration(max(0, nextStep.startTime - elapsed)))."
+        }
+        return "Drawdown phase."
+    }
+
+    private var steps: [PlaybackStep] {
+        recipe.pourSteps
+            .sorted(by: { $0.order < $1.order })
+            .enumerated()
+            .map { index, step in
+                PlaybackStep(
+                    id: index,
+                    label: index + 1,
+                    startTime: step.startTime,
+                    duration: step.duration,
+                    waterAmount: step.waterAmount
+                )
+            }
+    }
+
+    private var timelineSteps: [PourTimelineStepData] {
+        steps.map {
+            PourTimelineStepData(
+                startTime: $0.startTime,
+                duration: $0.duration,
+                waterAmount: $0.waterAmount
+            )
+        }
+    }
+
+    private var totalBrewTime: TimeInterval {
+        max(recipe.totalBrewTime, steps.map(\.endTime).max() ?? 0)
+    }
+
+    private var currentStep: PlaybackStep? {
+        guard hasStarted, elapsed < totalBrewTime else { return nil }
+        return steps.first { step in
+            elapsed >= step.startTime && elapsed < step.endTime
+        }
+    }
+
+    private var nextStep: PlaybackStep? {
+        guard elapsed < totalBrewTime else { return nil }
+        return steps.first(where: { $0.startTime >= elapsed })
+    }
+
+    private func start() {
+        hasStarted = true
+        isRunning = true
+        lastTick = .now
+    }
+
+    private func togglePause() {
+        isRunning.toggle()
+        lastTick = isRunning ? .now : nil
+    }
+
+    private func finishAndLog() {
+        guard !completionTriggered else { return }
+        completionTriggered = true
+        isRunning = false
+        lastTick = nil
+        onPlaybackCompleted()
+    }
+
+    private struct PlaybackStep: Identifiable {
+        let id: Int
+        let label: Int
+        let startTime: TimeInterval
+        let duration: TimeInterval
+        let waterAmount: Double
+
+        var endTime: TimeInterval {
+            startTime + duration
+        }
     }
 }
 

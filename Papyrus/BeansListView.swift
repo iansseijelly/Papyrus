@@ -189,6 +189,7 @@ struct BeanRowView: View {
 struct BeanDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var showAdjustRemaining = false
+    @State private var showReplenish = false
     @State private var showOverviewEditor = false
     @State private var showNotesEditor = false
 
@@ -244,6 +245,12 @@ struct BeanDetailView: View {
                     }
 
                     Button {
+                        showReplenish = true
+                    } label: {
+                        Label("Replenish Bean", systemImage: "arrow.clockwise.circle")
+                    }
+
+                    Button {
                         showNotesEditor = true
                     } label: {
                         Label("Edit Notes", systemImage: "note.text")
@@ -270,6 +277,14 @@ struct BeanDetailView: View {
             NavigationStack {
                 BeanInventoryAdjustView(bean: bean) {
                     showAdjustRemaining = false
+                }
+            }
+            .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showReplenish) {
+            NavigationStack {
+                BeanReplenishView(bean: bean) {
+                    showReplenish = false
                 }
             }
             .presentationDetents([.medium, .large])
@@ -486,6 +501,83 @@ struct BeanInventoryAdjustView: View {
                 remaining = newValue
             }
         }
+    }
+}
+
+private struct BeanReplenishView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let bean: Bean
+    var onDismiss: () -> Void
+
+    @State private var roastDate: Date
+    @State private var remaining: Double
+    @State private var showReplaceConfirmation = false
+
+    init(bean: Bean, onDismiss: @escaping () -> Void) {
+        self.bean = bean
+        self.onDismiss = onDismiss
+        _roastDate = State(initialValue: .now)
+        _remaining = State(initialValue: bean.bagWeightGrams)
+    }
+
+    var body: some View {
+        Form {
+            Section("Replenish") {
+                DatePicker("New roast date", selection: $roastDate, displayedComponents: .date)
+
+                LabeledContent("Bag size", value: gramsString(bean.bagWeightGrams))
+
+                Stepper(value: $remaining, in: 0...bean.bagWeightGrams, step: 5) {
+                    Text("New inventory: \(Int(remaining)) g")
+                }
+
+                Slider(value: $remaining, in: 0...bean.bagWeightGrams, step: 5)
+
+                HStack {
+                    Text("Manual entry")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    TextField("grams", value: $remaining, format: .number)
+                        .multilineTextAlignment(.trailing)
+                        .keyboardType(.numberPad)
+                        .frame(maxWidth: 120)
+                }
+            }
+        }
+        .navigationTitle("Replenish Bean")
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") {
+                    dismiss()
+                    onDismiss()
+                }
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save", action: handleSaveTapped)
+            }
+        }
+        .alert("Replace Current Bag?", isPresented: $showReplaceConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Replenish", role: .destructive, action: save)
+        } message: {
+            Text("You still have \(gramsString(bean.remainingGrams)) recorded. Replenishing will replace the current bag inventory.")
+        }
+    }
+
+    private func handleSaveTapped() {
+        if bean.remainingGrams > 0 {
+            showReplaceConfirmation = true
+        } else {
+            save()
+        }
+    }
+
+    private func save() {
+        bean.roastDate = roastDate
+        bean.remainingGrams = min(max(0, remaining), bean.bagWeightGrams)
+        dismiss()
+        onDismiss()
     }
 }
 

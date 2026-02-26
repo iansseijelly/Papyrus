@@ -222,7 +222,7 @@ private struct BrewDetailView: View {
     }
 }
 
-private struct NewBrewFlow: View {
+struct NewBrewFlow: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
@@ -233,8 +233,15 @@ private struct NewBrewFlow: View {
     @State private var showBeanPicker = false
     @State private var showRecipePicker = false
     @State private var showStepEditor = false
+    @State private var didApplyInitialRecipe = false
 
+    let initialRecipe: Recipe?
     var onComplete: () -> Void
+
+    init(initialRecipe: Recipe? = nil, onComplete: @escaping () -> Void) {
+        self.initialRecipe = initialRecipe
+        self.onComplete = onComplete
+    }
 
     var body: some View {
         NavigationStack {
@@ -376,6 +383,13 @@ private struct NewBrewFlow: View {
         .onChange(of: draft.totalStepDuration) { _, newValue in
             draft.brewDurationSeconds = max(draft.brewDurationSeconds, newValue)
             draft.brewDurationSeconds = min(draft.brewDurationSeconds, draft.maxBrewDuration)
+        }
+        .onAppear {
+            guard !didApplyInitialRecipe else { return }
+            if let initialRecipe {
+                draft.apply(recipe: initialRecipe)
+            }
+            didApplyInitialRecipe = true
         }
     }
 
