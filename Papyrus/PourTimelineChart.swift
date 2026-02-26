@@ -121,7 +121,7 @@ struct PourTimelineChart: View {
                     x: .value("Current Time", clampedCurrentTime(currentTime))
                 )
                 .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(color.opacity(0.8))
 
                 PointMark(
                     x: .value("Current Time", clampedCurrentTime(currentTime)),

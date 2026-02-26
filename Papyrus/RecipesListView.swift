@@ -402,7 +402,7 @@ private struct RecipePlayView: View {
             PourTimelineChart(
                 steps: timelineSteps,
                 totalBrewTime: totalBrewTime,
-                color: .green,
+                color: .blue,
                 currentTime: elapsed
             )
             .frame(height: 220)
