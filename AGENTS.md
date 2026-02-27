@@ -4,10 +4,11 @@ These notes capture project-specific context so future Codex agents can work eff
 
 ## Architectural Overview
 - **Frameworks:** SwiftUI + SwiftData (iOS 17+). No UIKit/AppKit shims.
-- **Model Schema:** `Bean`, `Recipe`, `PourStep`, `BrewLog`, `BrewStepSnapshot`. Schema changes require deleting the existing SwiftData store (uninstall app / reset simulator) before running new builds.
+- **Model Schema:** `Bean`, `Recipe`, `PourStep`, `BrewLog`, `BrewStepSnapshot`, `BrewFlavorTagSnapshot`. Schema changes require deleting the existing SwiftData store (uninstall app / reset simulator) before running new builds.
 - **Shared Components:**
   - `PourTimelineChart.swift` – renders cumulative pour curves for recipes/brews.
   - `PourStepEditing.swift` – contains `StepDraft`, `PourStepDraftContainer`, `PourStepsEditorView`, `StepEditorRow`, numeric popovers, compact steppers, etc. Both recipes and brews conform to the container protocol; prefer reusing/editing this toolkit instead of reimplementing pour-step logic elsewhere.
+  - `FlavorTagging.swift` – bundled taxonomy loader + dedicated flavor-tag editor sheet (`FlavorTagEditorView`) used by brew logging.
 
 ## UI Conventions
 - **Navigation:** `NavigationStack` and `Form` for data entry flows; detail screens use `ScrollView` + card-style sections.
@@ -15,6 +16,7 @@ These notes capture project-specific context so future Codex agents can work eff
 - **Inline Inputs:** Use the `inlineTextField` helper (LabeledContent + trailing text field) for right-aligned inputs (snapshot name, method, grind, custom bean name). Avoid ad-hoc styling.
 - **Rating Pills:** Use the shared `ratingPill(label:fullLabel:value:)`—even abbreviated “A/B/S” pills include accessibility labels for full attribute names.
 - **Timeline Editor:** The pour-step editor is a sheet with a fixed timeline header (safe-area inset) and a list of steps ordered newest→oldest. When adding step-related features, modify `PourStepsEditorView` so recipes and brews stay in sync.
+- **Flavor Tagging:** Brew flavor profile tagging is managed in a dedicated sheet (`FlavorTagEditorView`) with hierarchy + search + max 5 leaf tags. Keep selection leaf-only and sourced from the bundled taxonomy JSON.
 
 ## Data Entry Rules
 - **Pour Steps:** Every recipe/brew must have at least one pour step; the save button is disabled otherwise. Steps are stored in grams + seconds only—no ounces or Fahrenheit anywhere.

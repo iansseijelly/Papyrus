@@ -25,6 +25,11 @@ struct ContentView: View {
                 .tabItem {
                     Label("Brew", systemImage: "cup.and.saucer.fill")
                 }
+
+            DashboardView()
+                .tabItem {
+                    Label("Dashboard", systemImage: "chart.bar.xaxis")
+                }
         }
     }
 }
@@ -36,7 +41,7 @@ struct ContentView: View {
 
 @MainActor
 private var previewContainer: ModelContainer {
-    let schema = Schema([Bean.self, Recipe.self, PourStep.self, BrewLog.self, BrewStepSnapshot.self])
+    let schema = Schema([Bean.self, Recipe.self, PourStep.self, BrewLog.self, BrewStepSnapshot.self, BrewFlavorTagSnapshot.self])
     let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
     let container = try! ModelContainer(for: schema, configurations: [configuration])
     let context = ModelContext(container)

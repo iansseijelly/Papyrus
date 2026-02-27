@@ -31,6 +31,8 @@ final class BrewLog {
     @Relationship var baseRecipe: Recipe?
     @Relationship(deleteRule: .cascade, inverse: \BrewStepSnapshot.brew)
     var steps: [BrewStepSnapshot]
+    @Relationship(deleteRule: .cascade, inverse: \BrewFlavorTagSnapshot.brew)
+    var flavorTags: [BrewFlavorTagSnapshot]
 
     init(
         id: UUID = .init(),
@@ -50,7 +52,8 @@ final class BrewLog {
         customBeanName: String = "",
         bean: Bean? = nil,
         baseRecipe: Recipe? = nil,
-        steps: [BrewStepSnapshot] = []
+        steps: [BrewStepSnapshot] = [],
+        flavorTags: [BrewFlavorTagSnapshot] = []
     ) {
         self.id = id
         self.snapshotName = snapshotName
@@ -70,6 +73,7 @@ final class BrewLog {
         self.bean = bean
         self.baseRecipe = baseRecipe
         self.steps = steps
+        self.flavorTags = flavorTags
         self.createdAt = .now
     }
 
@@ -109,6 +113,30 @@ final class BrewStepSnapshot {
     }
 }
 
+@Model
+final class BrewFlavorTagSnapshot {
+    @Attribute(.unique) var id: UUID
+    var order: Int
+    var leafID: String
+    var leafNameAtCapture: String
+
+    @Relationship var brew: BrewLog?
+
+    init(
+        id: UUID = .init(),
+        order: Int,
+        leafID: String,
+        leafNameAtCapture: String,
+        brew: BrewLog? = nil
+    ) {
+        self.id = id
+        self.order = order
+        self.leafID = leafID
+        self.leafNameAtCapture = leafNameAtCapture
+        self.brew = brew
+    }
+}
+
 extension BrewLog {
     var displayBeanName: String {
         if let beanName = bean?.name.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -117,5 +145,9 @@ extension BrewLog {
         }
         let trimmed = customBeanName.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? "Unknown Bean" : trimmed
+    }
+
+    var sortedFlavorTags: [BrewFlavorTagSnapshot] {
+        flavorTags.sorted(by: { $0.order < $1.order })
     }
 }

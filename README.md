@@ -14,10 +14,11 @@ Papyrus is a SwiftUI + SwiftData app for tracking coffee beans, brew recipes, an
   - Dedicated pour-step editor with timeline-at-top layout, compact steppers, numeric popovers, and per-step notes.
   - Read-only timeline in recipe detail view plus metadata tiles.
 - **Brew Logging**
-  - New brew flow captures bean, recipe, pour steps, ratings (Acidity / Balance / Sweetness), notes, and tasting notes.
+  - New brew flow captures bean, recipe, pour steps, ratings (Acidity / Bitterness / Sweetness), notes, and tasting notes.
+  - Dedicated flavor-profile editor supports hierarchical flavor tagging (leaf-level, up to 5 tags) backed by bundled taxonomy data.
   - Beans and recipes can be selected from SwiftData or entered as “Other …” with custom names. Custom beans skip inventory deduction; custom recipes start from a blank pour timeline.
   - Editing pour steps for a brew reuses the same timeline editor used by recipes.
-  - Brew detail screen mirrors the recipe layout with overview, pour timeline, ratings, notes, and tasting notes.
+  - Brew detail screen mirrors the recipe layout with overview, pour timeline, ratings, flavor profile, notes, and tasting notes.
   - Timeline graph uses the shared component so columns stay visually consistent.
 - **Instances/Brews Tab**
   - Renamed to “Brew” with cup icon; list view shows bean name (or custom label), snapshot name, mini ratings pills, and tasting notes preview.
@@ -25,12 +26,13 @@ Papyrus is a SwiftUI + SwiftData app for tracking coffee beans, brew recipes, an
 ## Architecture
 
 - **SwiftUI** for all UI, `NavigationStack` & `Form` for flows.
-- **SwiftData** models: `Bean`, `Recipe`, `PourStep`, `BrewLog`, `BrewStepSnapshot`.
+- **SwiftData** models: `Bean`, `Recipe`, `PourStep`, `BrewLog`, `BrewStepSnapshot`, `BrewFlavorTagSnapshot`.
 - Shared pour-step editing toolkit (`PourStepEditing.swift`) provides:
   - `StepDraft` model, `PourStepDraftContainer` protocol.
   - `PourStepsEditorView` with timeline header and newest-first ordering.
   - `StepEditorRow`, `NumericPopoverView`, `CompactStepper`, etc.
 - Shared `PourTimelineChart` renders any sequence of pour steps.
+- Shared flavor tagging toolkit (`FlavorTagging.swift`) provides taxonomy loading, hierarchical drill-down, search, and max-selection enforcement.
 
 ## Development Notes
 
@@ -67,8 +69,9 @@ Papyrus/
 - `Bean`: roaster/origin/roast metadata, grams tracking, flavor notes.
 - `Recipe`: dose, water temp, grind, brew duration, pour steps.
 - `PourStep`: start time, duration, water amount, notes, linked to recipe.
-- `BrewLog`: snapshot info, ratings, tasting notes, optional bean/recipe, custom bean name, pour-step snapshots.
+- `BrewLog`: snapshot info, ratings, tasting notes, optional bean/recipe, custom bean name, pour-step snapshots, flavor-tag snapshots.
 - `BrewStepSnapshot`: stored pour steps for a brewed instance.
+- `BrewFlavorTagSnapshot`: stored flavor-tag leaves for a brewed instance.
 
 ## Contributing
 

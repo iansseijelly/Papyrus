@@ -17,6 +17,7 @@ struct PapyrusApp: App {
             PourStep.self,
             BrewLog.self,
             BrewStepSnapshot.self,
+            BrewFlavorTagSnapshot.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

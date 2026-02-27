@@ -76,7 +76,7 @@ private struct BrewRowView: View {
                 .foregroundStyle(.secondary)
             HStack(spacing: 8) {
                 ratingPill(label: "A", fullLabel: "Acidity", value: brew.sourness)
-                ratingPill(label: "B", fullLabel: "Balance", value: brew.bitterness)
+                ratingPill(label: "B", fullLabel: "Bitterness", value: brew.bitterness)
                 ratingPill(label: "S", fullLabel: "Sweetness", value: brew.sweetness)
             }
             .font(.caption2)
@@ -110,6 +110,8 @@ private struct BrewDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     let brew: BrewLog
+    private let flavorTaxonomy = FlavorTaxonomyProvider.shared.taxonomy
+    @State private var showEditBrew = false
 
     var body: some View {
         ScrollView {
@@ -117,6 +119,9 @@ private struct BrewDetailView: View {
                 header
                 timeline
                 ratings
+                if !brew.flavorTags.isEmpty {
+                    flavorProfile
+                }
                 if !brew.notes.isEmpty {
                     infoCard(title: "Notes") {
                         Text(brew.notes)
@@ -134,6 +139,12 @@ private struct BrewDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Button {
+                        showEditBrew = true
+                    } label: {
+                        Label("Edit Brew", systemImage: "pencil")
+                    }
+
                     Button(role: .destructive) {
                         modelContext.delete(brew)
                         dismiss()
@@ -143,6 +154,11 @@ private struct BrewDetailView: View {
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
+            }
+        }
+        .sheet(isPresented: $showEditBrew) {
+            NavigationStack {
+                BrewEditorView(brew: brew)
             }
         }
     }
@@ -162,7 +178,7 @@ private struct BrewDetailView: View {
         infoCard(title: "Tasting Ratings") {
             HStack {
                 ratingColumn("Acidity", value: brew.sourness)
-                ratingColumn("Balance", value: brew.bitterness)
+                ratingColumn("Bitterness", value: brew.bitterness)
                 ratingColumn("Sweetness", value: brew.sweetness)
             }
         }
@@ -183,6 +199,20 @@ private struct BrewDetailView: View {
                     color: .blue
                 )
                 .frame(height: 220)
+            }
+        }
+    }
+
+    private var flavorProfile: some View {
+        infoCard(title: "Flavor Profile") {
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(brew.sortedFlavorTags, id: \.id) { tag in
+                    Text(flavorLabel(for: tag))
+                        .font(.caption)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color(.secondarySystemFill), in: Capsule())
+                }
             }
         }
     }
@@ -220,6 +250,208 @@ private struct BrewDetailView: View {
                 )
             }
     }
+
+    private func flavorLabel(for tag: BrewFlavorTagSnapshot) -> String {
+        if let path = flavorTaxonomy?.pathLabel(for: tag.leafID) {
+            return path
+        }
+        return "\(tag.leafNameAtCapture) (archived)"
+    }
+}
+
+private struct BrewEditorView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+
+    let brew: BrewLog
+
+    @State private var draft: BrewEditDraft
+    @State private var showStepEditor = false
+
+    init(brew: BrewLog) {
+        self.brew = brew
+        _draft = State(initialValue: BrewEditDraft(brew: brew))
+    }
+
+    var body: some View {
+        Form {
+            Section("Brew") {
+                inlineTextField(
+                    label: "Snapshot Name",
+                    placeholder: "e.g. Triple Pour",
+                    text: $draft.snapshotName,
+                    maxWidth: nil
+                )
+                inlineTextField(
+                    label: "Method",
+                    placeholder: "e.g. V60",
+                    text: $draft.snapshotMethod,
+                    maxWidth: nil
+                )
+            }
+
+            Section("Pour Steps") {
+                Button {
+                    showStepEditor = true
+                } label: {
+                    HStack {
+                        Label("Edit Pour Steps", systemImage: "slider.horizontal.3")
+                        Spacer()
+                        Text("\(draft.stepDrafts.count) steps")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Text("Total water: \(Int(draft.totalWater)) g • Total time: \(formatDuration(draft.brewDurationSeconds))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Brew Settings") {
+                Stepper(value: $draft.doseGrams, in: 5...80, step: 1) {
+                    Text("Dose: \(Int(draft.doseGrams)) g")
+                }
+                Stepper(value: $draft.yieldGrams, in: 50...1000, step: 5) {
+                    Text("Yield: \(Int(draft.yieldGrams)) g")
+                }
+                Stepper(value: $draft.waterTemperatureCelsius, in: 80...100, step: 1) {
+                    Text("Water Temp: \(Int(draft.waterTemperatureCelsius))°C")
+                }
+                Stepper(value: $draft.brewDurationSeconds, in: 30...600, step: 5) {
+                    Text("Total Time: \(Int(draft.brewDurationSeconds))s")
+                }
+                inlineTextField(
+                    label: "Grind Setting",
+                    placeholder: "e.g. 5.2",
+                    text: $draft.grindSetting,
+                    maxWidth: 160
+                )
+            }
+
+            Section("Ratings") {
+                ratingSlider(label: "Acidity", value: $draft.sourness)
+                ratingSlider(label: "Balance", value: $draft.bitterness)
+                ratingSlider(label: "Sweetness", value: $draft.sweetness)
+            }
+
+            Section("Notes") {
+                TextField("Brew notes", text: $draft.notes, axis: .vertical)
+                TextField("Tasting notes", text: $draft.tastingNotes, axis: .vertical)
+            }
+        }
+        .navigationTitle("Edit Brew")
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") {
+                    dismiss()
+                }
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save", action: save)
+                    .disabled(!draft.isSavable)
+            }
+        }
+        .onChange(of: draft.totalStepDuration) { _, newValue in
+            draft.brewDurationSeconds = max(draft.brewDurationSeconds, newValue)
+            draft.brewDurationSeconds = min(draft.brewDurationSeconds, draft.maxBrewDuration)
+        }
+        .sheet(isPresented: $showStepEditor) {
+            NavigationStack {
+                PourStepsEditorView(draft: $draft)
+            }
+        }
+    }
+
+    private func save() {
+        guard draft.isSavable else { return }
+
+        brew.snapshotName = draft.snapshotName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? brew.snapshotName : draft.snapshotName
+        brew.snapshotMethod = draft.snapshotMethod
+        brew.doseGrams = draft.doseGrams
+        brew.yieldGrams = draft.yieldGrams
+        brew.waterTemperatureCelsius = draft.waterTemperatureCelsius
+        brew.grindSetting = draft.grindSetting
+        brew.brewDurationSeconds = draft.brewDurationSeconds
+        brew.sourness = draft.sourness
+        brew.bitterness = draft.bitterness
+        brew.sweetness = draft.sweetness
+        brew.notes = draft.notes
+        brew.tastingNotes = draft.tastingNotes
+
+        brew.steps.forEach { modelContext.delete($0) }
+        brew.steps = draft.stepDrafts
+            .sorted(by: { $0.order < $1.order })
+            .map {
+                BrewStepSnapshot(
+                    order: $0.order,
+                    startTime: $0.startTime,
+                    duration: $0.duration,
+                    waterAmount: $0.waterAmount,
+                    note: $0.note,
+                    brew: brew
+                )
+            }
+
+        dismiss()
+    }
+
+    private func ratingSlider(label: String, value: Binding<Int>) -> some View {
+        VStack(alignment: .leading) {
+            HStack {
+                Text(label)
+                Spacer()
+                Text("\(value.wrappedValue)")
+                    .foregroundStyle(.secondary)
+            }
+            Slider(value: Binding(
+                get: { Double(value.wrappedValue) },
+                set: { value.wrappedValue = Int($0.rounded()) }
+            ), in: 1...10, step: 1)
+        }
+    }
+}
+
+private struct BrewEditDraft {
+    var snapshotName: String
+    var snapshotMethod: String
+    var doseGrams: Double
+    var yieldGrams: Double
+    var waterTemperatureCelsius: Double
+    var grindSetting: String
+    var brewDurationSeconds: Double
+    var notes: String
+    var tastingNotes: String
+    var sourness: Int
+    var bitterness: Int
+    var sweetness: Int
+    var stepDrafts: [StepDraft]
+
+    init(brew: BrewLog) {
+        snapshotName = brew.snapshotName
+        snapshotMethod = brew.snapshotMethod
+        doseGrams = brew.doseGrams
+        yieldGrams = brew.yieldGrams
+        waterTemperatureCelsius = brew.waterTemperatureCelsius
+        grindSetting = brew.grindSetting
+        brewDurationSeconds = brew.brewDurationSeconds
+        notes = brew.notes
+        tastingNotes = brew.tastingNotes
+        sourness = brew.sourness
+        bitterness = brew.bitterness
+        sweetness = brew.sweetness
+        stepDrafts = brew.steps
+            .sorted(by: { $0.order < $1.order })
+            .map { StepDraft(snapshot: $0) }
+    }
+
+    var isSavable: Bool {
+        !stepDrafts.isEmpty
+    }
+}
+
+extension BrewEditDraft: PourStepDraftContainer {
+    var maxBrewDuration: TimeInterval { BrewDraftConstants.maxBrewDuration }
+    var defaultStepDuration: TimeInterval { BrewDraftConstants.defaultStepDuration }
+    var defaultStepWater: Double { BrewDraftConstants.defaultStepWater }
 }
 
 struct NewBrewFlow: View {
@@ -233,6 +465,7 @@ struct NewBrewFlow: View {
     @State private var showBeanPicker = false
     @State private var showRecipePicker = false
     @State private var showStepEditor = false
+    @State private var showFlavorEditor = false
     @State private var didApplyInitialRecipe = false
 
     let initialRecipe: Recipe?
@@ -305,10 +538,18 @@ struct NewBrewFlow: View {
                 }
 
                 Section("Brew Settings") {
-                    stepperRow(title: "Dose", value: $draft.doseGrams, format: "g", range: 5...80, step: 1)
-                    stepperRow(title: "Yield", value: $draft.yieldGrams, format: "g", range: 50...1000, step: 5)
-                    stepperRow(title: "Water Temp", value: $draft.waterTemperatureCelsius, format: "°C", range: 80...100, step: 1)
-                    stepperRow(title: "Total Time", value: $draft.brewDurationSeconds, format: "s", range: 30...600, step: 5)
+                    Stepper(value: $draft.doseGrams, in: 5...80, step: 1) {
+                        Text("Dose: \(Int(draft.doseGrams)) g")
+                    }
+                    Stepper(value: $draft.yieldGrams, in: 50...1000, step: 5) {
+                        Text("Yield: \(Int(draft.yieldGrams)) g")
+                    }
+                    Stepper(value: $draft.waterTemperatureCelsius, in: 80...100, step: 1) {
+                        Text("Water Temp: \(Int(draft.waterTemperatureCelsius))°C")
+                    }
+                    Stepper(value: $draft.brewDurationSeconds, in: 30...600, step: 5) {
+                        Text("Total Time: \(Int(draft.brewDurationSeconds))s")
+                    }
                     inlineTextField(
                         label: "Grind Setting",
                         placeholder: "e.g. 5.2",
@@ -319,8 +560,27 @@ struct NewBrewFlow: View {
 
                 Section("Ratings") {
                     ratingSlider(label: "Acidity", value: $draft.sourness)
-                    ratingSlider(label: "Balance", value: $draft.bitterness)
+                    ratingSlider(label: "Bitterness", value: $draft.bitterness)
                     ratingSlider(label: "Sweetness", value: $draft.sweetness)
+                }
+
+                Section("Flavor Profile") {
+                    Button {
+                        showFlavorEditor = true
+                    } label: {
+                        HStack {
+                            Label("Edit Flavor Tags", systemImage: "sparkles.rectangle.stack")
+                            Spacer()
+                            Text("\(draft.selectedFlavorLeafIDs.count)/\(BrewDraftConstants.maxFlavorTags)")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    if !draft.flavorPreviewText.isEmpty {
+                        Text(draft.flavorPreviewText)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
                 }
 
                 Section("Notes") {
@@ -373,6 +633,9 @@ struct NewBrewFlow: View {
                 NavigationStack {
                     PourStepsEditorView(draft: $draft)
                 }
+            }
+            .sheet(isPresented: $showFlavorEditor) {
+                FlavorTagEditorView(selectedLeafIDs: $draft.selectedFlavorLeafIDs)
             }
         }
         .onChange(of: draft.isModified) { _, newValue in
@@ -429,6 +692,16 @@ struct NewBrewFlow: View {
                 )
             }
         brew.steps = steps
+
+        let flavorTags = draft.selectedFlavorLeafIDs.enumerated().map { offset, leafID in
+            BrewFlavorTagSnapshot(
+                order: offset,
+                leafID: leafID,
+                leafNameAtCapture: FlavorTaxonomyProvider.shared.taxonomy?.leaf(for: leafID)?.name ?? leafID,
+                brew: brew
+            )
+        }
+        brew.flavorTags = flavorTags
         modelContext.insert(brew)
 
         if let bean = selectedBean {
@@ -437,21 +710,6 @@ struct NewBrewFlow: View {
 
         dismiss()
         onComplete()
-    }
-
-    private func stepperRow(title: String, value: Binding<Double>, format: String, range: ClosedRange<Double>, step: Double) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(title)
-                Spacer()
-                Text("\(Int(value.wrappedValue))\(format)")
-                    .foregroundStyle(.secondary)
-            }
-            Stepper(value: value, in: range, step: step) {
-                EmptyView()
-            }
-            .labelsHidden()
-        }
     }
 
     private func ratingSlider(label: String, value: Binding<Int>) -> some View {
@@ -486,6 +744,7 @@ private struct BrewDraft {
     var bitterness: Int = 5
     var sweetness: Int = 5
     var stepDrafts: [StepDraft] = []
+    var selectedFlavorLeafIDs: [String] = []
     var usesCustomBean: Bool = false
     var usesCustomRecipe: Bool = false
     var markAsModified: Bool = false
@@ -558,6 +817,16 @@ private struct BrewDraft {
         return trimmed.isEmpty ? "Other Bean" : trimmed
     }
 
+    var flavorPreviewText: String {
+        guard let taxonomy = FlavorTaxonomyProvider.shared.taxonomy else { return "" }
+        let names = selectedFlavorLeafIDs.compactMap { taxonomy.leaf(for: $0)?.name }
+        guard !names.isEmpty else { return "" }
+        if names.count <= 3 {
+            return names.joined(separator: ", ")
+        }
+        return names.prefix(3).joined(separator: ", ") + " +\(names.count - 3) more"
+    }
+
     private func stepsMatch(recipe: Recipe) -> Bool {
         let recipeSteps = recipe.pourSteps.sorted(by: { $0.order < $1.order })
         guard recipeSteps.count == stepDrafts.count else { return false }
@@ -576,6 +845,7 @@ private enum BrewDraftConstants {
     static let defaultStepDuration: TimeInterval = 30
     static let defaultStepWater: Double = 100
     static let maxBrewDuration: TimeInterval = 1200
+    static let maxFlavorTags: Int = 5
 }
 
 extension BrewDraft: PourStepDraftContainer {

@@ -99,13 +99,6 @@ struct BeansListView: View {
             )
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button {
-                showCreateSheet = true
-            } label: {
-                Label("Add Bean", systemImage: "plus")
-            }
-            .buttonStyle(.bordered)
-
             Spacer()
         }
         .padding(.top, 16)

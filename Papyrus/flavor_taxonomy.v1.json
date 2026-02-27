@@ -1,0 +1,162 @@
+{
+  "version": "wcr-lexicon-2.0-mapped-v1",
+  "nodes": [
+    {
+      "id": "floral",
+      "name": "Floral",
+      "children": [
+        {
+          "id": "floral-white",
+          "name": "White Floral",
+          "children": [
+            { "id": "floral-white-jasmine", "name": "Jasmine" },
+            { "id": "floral-white-orange-blossom", "name": "Orange Blossom" }
+          ]
+        },
+        {
+          "id": "floral-herbal",
+          "name": "Floral Herbal",
+          "children": [
+            { "id": "floral-herbal-lavender", "name": "Lavender" },
+            { "id": "floral-herbal-rose", "name": "Rose" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fruity",
+      "name": "Fruity",
+      "children": [
+        {
+          "id": "fruit-berry",
+          "name": "Berry",
+          "children": [
+            { "id": "fruit-berry-blueberry", "name": "Blueberry" },
+            { "id": "fruit-berry-raspberry", "name": "Raspberry" },
+            { "id": "fruit-berry-strawberry", "name": "Strawberry" }
+          ]
+        },
+        {
+          "id": "fruit-citrus",
+          "name": "Citrus",
+          "children": [
+            { "id": "fruit-citrus-lemon", "name": "Lemon" },
+            { "id": "fruit-citrus-lime", "name": "Lime" },
+            { "id": "fruit-citrus-orange", "name": "Orange" },
+            { "id": "fruit-citrus-grapefruit", "name": "Grapefruit" }
+          ]
+        },
+        {
+          "id": "fruit-stone",
+          "name": "Stone Fruit",
+          "children": [
+            { "id": "fruit-stone-peach", "name": "Peach" },
+            { "id": "fruit-stone-apricot", "name": "Apricot" },
+            { "id": "fruit-stone-plum", "name": "Plum" }
+          ]
+        },
+        {
+          "id": "fruit-tropical",
+          "name": "Tropical",
+          "children": [
+            { "id": "fruit-tropical-mango", "name": "Mango" },
+            { "id": "fruit-tropical-pineapple", "name": "Pineapple" },
+            { "id": "fruit-tropical-passionfruit", "name": "Passion Fruit" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sweet",
+      "name": "Sweet",
+      "children": [
+        {
+          "id": "sweet-sugar-browning",
+          "name": "Sugar Browning",
+          "children": [
+            { "id": "sweet-sugar-browning-caramel", "name": "Caramel" },
+            { "id": "sweet-sugar-browning-maple", "name": "Maple Syrup" },
+            { "id": "sweet-sugar-browning-brown-sugar", "name": "Brown Sugar" }
+          ]
+        },
+        {
+          "id": "sweet-vanilla",
+          "name": "Confectionary",
+          "children": [
+            { "id": "sweet-confectionary-vanilla", "name": "Vanilla" },
+            { "id": "sweet-confectionary-honey", "name": "Honey" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nutty-cocoa",
+      "name": "Nutty / Cocoa",
+      "children": [
+        {
+          "id": "nutty",
+          "name": "Nutty",
+          "children": [
+            { "id": "nutty-almond", "name": "Almond" },
+            { "id": "nutty-hazelnut", "name": "Hazelnut" },
+            { "id": "nutty-peanut", "name": "Peanut" }
+          ]
+        },
+        {
+          "id": "cocoa",
+          "name": "Cocoa",
+          "children": [
+            { "id": "cocoa-cacao", "name": "Cacao Nib" },
+            { "id": "cocoa-dark-chocolate", "name": "Dark Chocolate" },
+            { "id": "cocoa-milk-chocolate", "name": "Milk Chocolate" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "spices",
+      "name": "Spices",
+      "children": [
+        {
+          "id": "spice-brown",
+          "name": "Brown Spice",
+          "children": [
+            { "id": "spice-brown-cinnamon", "name": "Cinnamon" },
+            { "id": "spice-brown-clove", "name": "Clove" },
+            { "id": "spice-brown-nutmeg", "name": "Nutmeg" }
+          ]
+        },
+        {
+          "id": "spice-pungent",
+          "name": "Pungent Spice",
+          "children": [
+            { "id": "spice-pungent-black-pepper", "name": "Black Pepper" },
+            { "id": "spice-pungent-cardamom", "name": "Cardamom" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "roasted",
+      "name": "Roasted",
+      "children": [
+        {
+          "id": "roasted-cereal",
+          "name": "Cereal",
+          "children": [
+            { "id": "roasted-cereal-toast", "name": "Toast" },
+            { "id": "roasted-cereal-granola", "name": "Granola" }
+          ]
+        },
+        {
+          "id": "roasted-smoky",
+          "name": "Smoky",
+          "children": [
+            { "id": "roasted-smoky-tobacco", "name": "Tobacco" },
+            { "id": "roasted-smoky-char", "name": "Char" }
+          ]
+        }
+      ]
+    }
+  ]
+}
